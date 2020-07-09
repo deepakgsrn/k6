@@ -32,28 +32,28 @@ import (
 	"github.com/loadimpact/k6/core"
 )
 
-func NewHandler() http.Handler {
+func NewHandler(logger logrus.FieldLogger) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/v1/", v1.NewHandler())
-	mux.Handle("/ping", HandlePing())
-	mux.Handle("/", HandlePing())
+	mux.Handle("/ping", HandlePing(logger))
+	mux.Handle("/", HandlePing(logger))
 	return mux
 }
 
-func ListenAndServe(addr string, engine *core.Engine) error {
-	mux := NewHandler()
+func ListenAndServe(addr string, engine *core.Engine, logger logrus.FieldLogger) error {
+	mux := NewHandler(logger)
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
 	n.UseFunc(WithEngine(engine))
-	n.UseFunc(NewLogger(logrus.StandardLogger()))
+	n.UseFunc(NewLogger(logger))
 	n.UseHandler(mux)
 
 	return http.ListenAndServe(addr, n)
 }
 
 // NewLogger returns the middleware which logs response status for request.
-func NewLogger(l *logrus.Logger) negroni.HandlerFunc {
+func NewLogger(l logrus.FieldLogger) negroni.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		next(rw, r)
 
@@ -69,11 +69,11 @@ func WithEngine(engine *core.Engine) negroni.HandlerFunc {
 	})
 }
 
-func HandlePing() http.Handler {
+func HandlePing(logger logrus.FieldLogger) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Add("Content-Type", "text/plain; charset=utf-8")
 		if _, err := fmt.Fprint(rw, "ok"); err != nil {
-			logrus.WithError(err).Error("Error while printing ok")
+			logger.WithError(err).Error("Error while printing ok")
 		}
 	})
 }
