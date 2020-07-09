@@ -36,6 +36,7 @@ import (
 	"github.com/loadimpact/k6/core"
 	"github.com/loadimpact/k6/core/local"
 	"github.com/loadimpact/k6/lib"
+	"github.com/loadimpact/k6/lib/testutils"
 	"github.com/loadimpact/k6/lib/testutils/minirunner"
 )
 
@@ -77,9 +78,11 @@ func TestLogger(t *testing.T) {
 }
 
 func TestWithEngine(t *testing.T) {
-	execScheduler, err := local.NewExecutionScheduler(&minirunner.MiniRunner{}, logrus.StandardLogger())
+	logger := logrus.New()
+	logger.SetOutput(testutils.NewTestOutput(t))
+	execScheduler, err := local.NewExecutionScheduler(&minirunner.MiniRunner{}, logger)
 	require.NoError(t, err)
-	engine, err := core.NewEngine(execScheduler, lib.Options{}, logrus.StandardLogger())
+	engine, err := core.NewEngine(execScheduler, lib.Options{}, logger)
 	require.NoError(t, err)
 
 	rw := httptest.NewRecorder()
@@ -90,7 +93,9 @@ func TestWithEngine(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	mux := NewHandler()
+	logger := logrus.New()
+	logger.SetOutput(testutils.NewTestOutput(t))
+	mux := NewHandler(logger)
 
 	rw := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/ping", nil)
